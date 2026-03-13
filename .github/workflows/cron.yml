@@ -2,14 +2,13 @@ name: Cron
 
 on:
   schedule:
-    - cron: "1 6 * * *"
+    - cron: "27 6 * * *"
   workflow_dispatch:
 
 env:
   CI: true
   PYTHON_VERSION: 3.12
   PIPENV_VENV_IN_PROJECT: true
-  CITY_SCRAPERS_ENV: prod
   SCRAPY_SETTINGS_MODULE: city_scrapers.settings.prod
   WAYBACK_ENABLED: true
   AUTOTHROTTLE_MAX_DELAY: 30.0
@@ -51,9 +50,6 @@ jobs:
           if [ -d ".venv" ] && [ ! -f ".venv/bin/python" ]; then
             echo "Virtual environment exists but Python executable is missing. Rebuilding."
             rm -rf .venv
-          elif ! .venv/bin/python --version 2>&1 | grep -q "Python ${{ env.PYTHON_VERSION }}"; then
-            echo "Virtual environment Python version mismatch. Rebuilding."
-            rm -rf .venv
           elif [ ! -d ".venv" ]; then
             echo "No virtual environment found. Will build new one."
           else
@@ -64,6 +60,9 @@ jobs:
         run: pipenv sync
         env:
           PIPENV_DEFAULT_PYTHON_VERSION: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Playwright browsers
+        run: pipenv run playwright install --with-deps firefox
 
       - name: Run scrapers
         run: |
