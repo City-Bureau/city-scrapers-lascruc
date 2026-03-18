@@ -58,7 +58,7 @@ class SpiderFactoryTemplateMixin(
     CityScrapersSpider, metaclass=SpiderFactoryTemplateMixinMeta
 ):
 
-    timezone = "America/Chicago"
+    timezone = "America/Denver"
     source_url = "https://lascruces.civicweb.net/Portal/MeetingSchedule.aspx"
     meetings_api_url = (
         "https://lascruces.civicweb.net/Services/MeetingsService.svc/meetings"
