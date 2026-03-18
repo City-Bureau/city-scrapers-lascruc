@@ -81,7 +81,19 @@
     "Name": "Press Conferences & Forums - Aug 30 2024",
     "Published": true,
     "TypeId": 25,
-    "VideoIcon": "<em class='video-event glyphicon glyphicon-facetime-video' data-id'10777' style='position: absolute; right: 0px; top: 9px; margin: 0 0 0 0.4em; text-indent: 0em;'></em>"
+    "VideoIcon": ""
+  },
+  {
+    "ExternalCalendar": false,
+    "Id": 10669,
+    "MeetingDate": "2024-08-26",
+    "MeetingDateTime": "2024-08-26 13:00",
+    "MeetingLocation": "City Council Chambers, City Hall",
+    "MeetingTime": "01:00 PM",
+    "Name": "Work Session - Aug 26 2024",
+    "Published": true,
+    "TypeId": 43,
+    "VideoIcon": ""
   },
   {
     "ExternalCalendar": false,
@@ -106,17 +118,5 @@
     "Published": false,
     "TypeId": 38,
     "VideoIcon": ""
-  },
-  {
-    "ExternalCalendar": false,
-    "Id": 10855,
-    "MeetingDate": "2025-03-10",
-    "MeetingDateTime": "2025-03-10 13:00",
-    "MeetingLocation": "City Council Chambers, City Hall",
-    "MeetingTime": "01:00 PM",
-    "Name": "Joint Work Session - Mar 10 2025",
-    "Published": true,
-    "TypeId": 43,
-    "VideoIcon": "<em class='video-event glyphicon glyphicon-facetime-video' data-id'10855' style='position: absolute; right: 0px; top: 9px; margin: 0 0 0 0.4em; text-indent: 0em;'></em>"
   }
 ]
