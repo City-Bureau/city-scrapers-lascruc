@@ -158,7 +158,7 @@ class LascrucAnthonyCityMixin(CityScrapersSpider):
             links.append({"href": minutes_href, "title": "Minutes"})
             seen.add(minutes_href)
 
-        media_href = row.css("td.media a::attr(href)").get("").strip()
+        media_href = self._full_url(row.css("td.media a::attr(href)").get("").strip())
         if media_href and media_href not in seen:
             links.append({"href": media_href, "title": "Media"})
             seen.add(media_href)
@@ -169,8 +169,8 @@ class LascrucAnthonyCityMixin(CityScrapersSpider):
         """Return the AgendaCenter search URL for this spider's categories."""
         cids = ",".join(str(c) for c in self.cat_ids)
         return (
-            "{}/AgendaCenter/Search/?term=&CIDs={},".format(self.base_url, cids)
-            + "&startDate=&endDate=&dateRange=&dateSelector="
+            f"{self.base_url}/AgendaCenter/Search/?term=&CIDs={cids},"
+            "&startDate=&endDate=&dateRange=&dateSelector="
         )
 
     def _full_url(self, href):
