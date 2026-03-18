@@ -69,6 +69,10 @@ class SpiderFactoryTemplateMixin(
 
     include_non_public_documents = True
 
+    def _get_cache_busting_timestamp(self):
+        """Generate a cache-busting timestamp for API requests."""
+        return int(datetime.now(timezone.utc).timestamp() * 1000)
+
     def start_requests(self):
         """
         Request meetings from two years in the past through one year in the future.
@@ -80,7 +84,7 @@ class SpiderFactoryTemplateMixin(
         params = {
             "from": from_date,
             "to": to_date,
-            "_": int(datetime.now(timezone.utc).timestamp() * 1000),
+            "_": self._get_cache_busting_timestamp(),
         }
 
         url = f"{self.meetings_api_url}?{urlencode(params)}"
@@ -122,7 +126,7 @@ class SpiderFactoryTemplateMixin(
 
             docs_url = (
                 f"{self.meetings_api_url}/{meeting_id}/meetingDocuments"
-                f"?_={int(datetime.now(timezone.utc).timestamp() * 1000)}"
+                f"?_={self._get_cache_busting_timestamp()}"
             )
 
             yield scrapy.Request(
@@ -144,7 +148,7 @@ class SpiderFactoryTemplateMixin(
 
         video_url = (
             f"{self.video_api_url}/{meeting_id}"
-            f"?_={int(datetime.now(timezone.utc).timestamp() * 1000)}"
+            f"?_={self._get_cache_busting_timestamp()}"
         )
 
         yield scrapy.Request(
@@ -307,14 +311,14 @@ class SpiderFactoryTemplateMixin(
         return title.strip()
 
     def _parse_classification(self, title):
-        if "Board" in title or "Utilities" in title:
-            return BOARD
         if "City Council" in title:
             return CITY_COUNCIL
         if "CIAC" in title:
             return COMMITTEE
         if "Planning" in title:
             return COMMISSION
+        if "Board" in title or "Utilities" in title:
+            return BOARD
         return NOT_CLASSIFIED
 
     def _parse_start(self, item):
