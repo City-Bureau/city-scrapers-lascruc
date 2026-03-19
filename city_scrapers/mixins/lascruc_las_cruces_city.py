@@ -33,14 +33,11 @@ class LasCrucesMixinMeta(type):
     """
 
     def __init__(cls, name, bases, dct):
-        if name == "SpiderFactoryTemplateMixin":
+        if name == "LasCrucesMixin":
             super().__init__(name, bases, dct)
             return
 
-        if any(
-            getattr(base, "__name__", "") == "SpiderFactoryTemplateMixin"
-            for base in bases
-        ):
+        if any(getattr(base, "__name__", "") == "LasCrucesMixin" for base in bases):
             required_static_vars = ["agency", "name", "id"]
             missing_vars = [var for var in required_static_vars if var not in dct]
 
@@ -54,7 +51,7 @@ class LasCrucesMixinMeta(type):
         super().__init__(name, bases, dct)
 
 
-class SpiderFactoryTemplateMixin(CityScrapersSpider, metaclass=LasCrucesMixinMeta):
+class LasCrucesMixin(CityScrapersSpider, metaclass=LasCrucesMixinMeta):
 
     timezone = "America/Denver"
     source_url = "https://lascruces.civicweb.net/Portal/MeetingSchedule.aspx"
@@ -314,7 +311,7 @@ class SpiderFactoryTemplateMixin(CityScrapersSpider, metaclass=LasCrucesMixinMet
             return COMMITTEE
         if "Planning" in title:
             return COMMISSION
-        if "Board" in title or "Utilities" in title:
+        if "Board" in title or "Utilities" in title or "ASCMV" in title:
             return BOARD
         return NOT_CLASSIFIED
 

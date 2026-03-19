@@ -2,7 +2,7 @@
 This file dynamically creates spider classes for the spider factory mixin that agencies use. # noqa
 """
 
-from city_scrapers.mixins.lascruc_las_cruces_city import SpiderFactoryTemplateMixin
+from city_scrapers.mixins.lascruc_las_cruces_city import LasCrucesMixin
 
 spider_configs = [
     {
@@ -102,7 +102,7 @@ def create_spiders():
             # Dynamically create the spider class
             spider_class = type(
                 class_name,
-                (SpiderFactoryTemplateMixin,),
+                (LasCrucesMixin,),
                 attrs,
             )
 
