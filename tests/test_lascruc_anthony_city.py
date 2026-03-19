@@ -28,6 +28,14 @@ def spider():
     return LascrucAnthonyCityBotSpider()
 
 
+@pytest.fixture()
+@freeze_time(TEST_DATE)
+def meetings(spider):
+    meta = {"cat_id": 3, "current_year": 2026}
+    response = _html_response("lascruc_anthony_city_cat3_2026.html", meta=meta)
+    return [r for r in spider._parse_category_years(response) if not hasattr(r, "url")]
+
+
 @freeze_time(TEST_DATE)
 def test_year_discovery(spider):
     meta = {"cat_id": 3, "current_year": 2026}
@@ -42,13 +50,7 @@ def test_year_discovery(spider):
 
 
 @freeze_time(TEST_DATE)
-def test_meeting_fields(spider):
-    meta = {"cat_id": 3, "current_year": 2026}
-    response = _html_response("lascruc_anthony_city_cat3_2026.html", meta=meta)
-    meetings = [
-        r for r in spider._parse_category_years(response) if not hasattr(r, "url")
-    ]
-
+def test_meeting_fields(meetings):
     first = meetings[0]
     assert first["title"] == "BOT Regular Meeting"
     assert first["start"] == datetime(2026, 3, 4, 0, 0)
@@ -70,7 +72,7 @@ def test_meeting_fields(spider):
     minutes_link = next(l for l in first["links"] if l["title"] == "Minutes")
     assert "AgendaCenter/ViewFile/Minutes" in minutes_link["href"]
 
-    media_link = next(link for link in first["links"] if link["title"] == "Media")
+    media_link = next(l for l in first["links"] if l["title"] == "Media")
     assert media_link["href"].startswith("https://teams.microsoft.com")
 
     assert first["source"] == (
@@ -80,13 +82,7 @@ def test_meeting_fields(spider):
 
 
 @freeze_time(TEST_DATE)
-def test_meeting_without_minutes(spider):
-    meta = {"cat_id": 3, "current_year": 2026}
-    response = _html_response("lascruc_anthony_city_cat3_2026.html", meta=meta)
-    meetings = [
-        r for r in spider._parse_category_years(response) if not hasattr(r, "url")
-    ]
-
+def test_meeting_without_minutes(meetings):
     second = meetings[1]
     assert second["title"] == "Notice of Potential Quorum."
     assert second["start"] == datetime(2026, 2, 18, 0, 0)

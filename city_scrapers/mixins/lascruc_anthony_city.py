@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 
 import scrapy
@@ -16,18 +17,29 @@ class LascrucAnthonyCityMixin(CityScrapersSpider):
         agency: Agency display name
         cat_ids: list of integer category IDs from the AgendaCenter portal
         classification: city_scrapers_core classification constant
+
+    Subclasses may optionally define:
+        calendar_cid: integer CID for the CivicPlus calendar URL used to
+            supplement future meetings that have not yet appeared on the
+            AgendaCenter.  When set, the spider fetches the next 12 months
+            of calendar pages and yields any meeting whose date is strictly
+            after today (so AgendaCenter always owns "today" and past dates,
+            and the calendar supplies future-only entries without overlap).
     """
 
     timezone = "America/Denver"
     location = {"name": "", "address": ""}
     base_url = "https://www.cityofanthonynm.gov"
     api_url = base_url + "/AgendaCenter/UpdateCategoryList"
+    calendar_cid = None  # override in subclass to enable secondary calendar
 
     _LINK_TITLE_MAP = {
         "html": "Agenda (HTML)",
         "pdf": "Agenda (PDF)",
         "packet": "Agenda Packet",
     }
+    # Matches the end time in "6:00 PM - 8:00 PM" from the calendar date div
+    _CALENDAR_END_RE = re.compile(r"-\s*(\d{1,2}:\d{2}\s*[AP]M)", re.IGNORECASE)
     time_notes = (
         "Meeting times are not published on the AgendaCenter. "
         "Refer to the agenda document for the exact time."
@@ -38,14 +50,27 @@ class LascrucAnthonyCityMixin(CityScrapersSpider):
     }
 
     def start_requests(self):
-        current_year = datetime.now().year
+        now = datetime.now()
         for cat_id in self.cat_ids:
             yield self._category_request(
                 cat_id=cat_id,
-                year=current_year,
+                year=now.year,
                 callback=self._parse_category_years,
-                meta={"cat_id": cat_id, "current_year": current_year},
+                meta={"cat_id": cat_id, "current_year": now.year},
             )
+
+        if self.calendar_cid:
+            for i in range(13):  # current month + 12 future months
+                month = ((now.month - 1 + i) % 12) + 1
+                year = now.year + (now.month - 1 + i) // 12
+                yield scrapy.Request(
+                    url=(
+                        f"{self.base_url}/calendar.aspx"
+                        f"?month={month}&year={year}"
+                        f"&CID={self.calendar_cid}&view=list"
+                    ),
+                    callback=self._parse_calendar_month,
+                )
 
     def _category_request(self, cat_id, year, callback, meta=None):
         """Build a FormRequest to the AgendaCenter UpdateCategoryList endpoint."""
@@ -149,7 +174,7 @@ class LascrucAnthonyCityMixin(CityScrapersSpider):
         # Fall back to the inline p > a link if dropdown had no entries
         if not links:
             agenda_href = self._full_url(row.css("p a::attr(href)").get(""))
-            if agenda_href and agenda_href not in seen:
+            if agenda_href:
                 links.append({"href": agenda_href, "title": "Agenda"})
                 seen.add(agenda_href)
 
@@ -172,6 +197,61 @@ class LascrucAnthonyCityMixin(CityScrapersSpider):
             f"{self.base_url}/AgendaCenter/Search/?term=&CIDs={cids},"
             "&startDate=&endDate=&dateRange=&dateSelector="
         )
+
+    def _parse_calendar_month(self, response):
+        """Parse future meetings from one month of the CivicPlus calendar list view."""
+        today = datetime.now().date()
+        for item in response.css("div.calendars div.calendar ol li"):
+            meeting = self._parse_calendar_item(item)
+            if meeting and meeting["start"].date() > today:
+                yield meeting
+
+    def _parse_calendar_item(self, item):
+        """Parse a single calendar list item into a Meeting."""
+        title = item.css("h3 a span::text").get("").strip()
+        start, end = self._parse_calendar_datetime(item)
+        if not title or not start:
+            return None
+
+        meeting = Meeting(
+            title=title,
+            description="",
+            classification=self.classification,
+            start=start,
+            end=end,
+            all_day=False,
+            time_notes="",
+            location=self.location,
+            links=[],
+            source=f"{self.base_url}/calendar.aspx?CID={self.calendar_cid}",
+        )
+        meeting["status"] = self._get_status(meeting)
+        meeting["id"] = self._get_id(meeting)
+        return meeting
+
+    def _parse_calendar_datetime(self, item):
+        """Return (start, end) from schema.org ISO start + end time in the date div."""
+        iso = item.css("span[itemprop='startDate']::text").get("").strip()
+        try:
+            start = dateparse(iso)
+        except (ParserError, ValueError):
+            return None, None
+
+        # "April\xa01,\xa02026,\xa06:00 PM\u2009-\u20098:00 PM" — normalize whitespace
+        date_text = (
+            item.css("div.subHeader div.date::text")
+            .get("")
+            .replace("\xa0", " ")
+            .replace("\u2009", " ")
+        )
+        m = self._CALENDAR_END_RE.search(date_text)
+        end = None
+        if m:
+            try:
+                end = dateparse(f"{start.date()} {m.group(1)}")
+            except (ParserError, ValueError):
+                pass
+        return start, end
 
     def _full_url(self, href):
         """Prepend base_url to relative paths; return absolute URLs unchanged."""

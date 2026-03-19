@@ -1,10 +1,14 @@
 """
-Spider factory for City of Anthony NM AgendaCenter portal.
+Spider factory for City of Anthony NM scrapers.
 
-Dynamically creates one spider per board/commission scraped from:
-https://www.cityofanthonynm.gov/AgendaCenter
+Each spider pulls from two sources:
+  Primary   https://www.cityofanthonynm.gov/AgendaCenter
+            All past meetings with agendas, minutes, and media.
+  Secondary https://www.cityofanthonynm.gov/calendar.aspx?CID=<calendar_cid>
+            Future-only meetings (no documents). Used by both spiders via
+            calendar_cid (BOT=23, P&Z=27).
 
-Category IDs are taken from the AgendaCenter portal:
+AgendaCenter category IDs:
     2   Planning & Zoning Commission
     3   Board of Trustees
 """
@@ -20,6 +24,7 @@ spider_configs = [
         "agency": "City of Anthony NM Board of Trustees",
         "cat_ids": [3],
         "classification": BOARD,
+        "calendar_cid": 23,
     },
     {
         "class_name": "LascrucAnthonyCityPzSpider",
@@ -27,6 +32,7 @@ spider_configs = [
         "agency": "City of Anthony NM Planning & Zoning Commission",
         "cat_ids": [2],
         "classification": COMMISSION,
+        "calendar_cid": 27,
     },
 ]
 
