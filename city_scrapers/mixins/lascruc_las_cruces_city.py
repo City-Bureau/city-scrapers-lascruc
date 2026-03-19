@@ -27,7 +27,7 @@ from city_scrapers_core.spiders import CityScrapersSpider
 from dateutil.relativedelta import relativedelta
 
 
-class SpiderFactoryTemplateMixinMeta(type):
+class LasCrucesMixinMeta(type):
     """
     Metaclass that enforces required static variables on child spiders.
     """
@@ -54,9 +54,7 @@ class SpiderFactoryTemplateMixinMeta(type):
         super().__init__(name, bases, dct)
 
 
-class SpiderFactoryTemplateMixin(
-    CityScrapersSpider, metaclass=SpiderFactoryTemplateMixinMeta
-):
+class SpiderFactoryTemplateMixin(CityScrapersSpider, metaclass=LasCrucesMixinMeta):
 
     timezone = "America/Denver"
     source_url = "https://lascruces.civicweb.net/Portal/MeetingSchedule.aspx"
@@ -254,8 +252,7 @@ class SpiderFactoryTemplateMixin(
             else:
                 label = "Document"
 
-            title = f"{label}: {name}" if name else label
-            link = {"href": href, "title": title}
+            link = {"href": href, "title": label}
 
             if label == "Agenda":
                 existing = agenda_by_name.get(name)
@@ -329,7 +326,7 @@ class SpiderFactoryTemplateMixin(
 
     def _parse_time_notes(self, start_time):
         if start_time and start_time.hour == 0 and start_time.minute == 0:
-            return "Please check meeting details for more accurate time"
+            return "Please check meeting source website or attachment for more accurate meeting start time"  # noqa
         return ""
 
     def _parse_location(self, item):

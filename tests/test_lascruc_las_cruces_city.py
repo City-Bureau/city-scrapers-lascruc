@@ -305,13 +305,11 @@ def test_work_session_agenda_pdf_link(
         work_session_video_response,
     )
 
-    agenda_links = [
-        link for link in items[0]["links"] if link["title"].startswith("Agenda:")
-    ]
+    agenda_links = [link for link in items[0]["links"] if link["title"] == "Agenda"]
 
     assert len(agenda_links) == 1
     assert agenda_links[0]["href"].endswith(".pdf")
-    assert agenda_links[0]["title"] == "Agenda: Work Session - Aug 26 2024"
+    assert agenda_links[0]["title"] == "Agenda"
 
 
 def test_work_session_video_link_added(
