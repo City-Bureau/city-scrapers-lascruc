@@ -174,9 +174,10 @@ class LasCrucesMixin(CityScrapersSpider, metaclass=LasCrucesMixinMeta):
         try:
             data = json.loads(text)
         except json.JSONDecodeError:
+            self.logger.warning("Failed to decode JSON response from video API")
             return None
 
-        # Handle double-encoded JSON
+        # Handle double-encoded JSON(a string that needs to be decoded again)
         if isinstance(data, str):
             data = data.strip()
             if not data:
@@ -186,6 +187,9 @@ class LasCrucesMixin(CityScrapersSpider, metaclass=LasCrucesMixinMeta):
             try:
                 data = json.loads(data)
             except json.JSONDecodeError:
+                self.logger.warning(
+                    "Failed to decode double-encoded JSON response from video API"
+                )
                 return None
 
         if isinstance(data, list):
@@ -331,8 +335,8 @@ class LasCrucesMixin(CityScrapersSpider, metaclass=LasCrucesMixinMeta):
 
         if location.startswith("Utilities") or location.startswith("680"):
             return {
-                "address": "680 N Motel Blvd, Las Cruces NM",
                 "name": "Utilities Center",
+                "address": "680 N Motel Blvd, Las Cruces NM",
             }
 
         if (
@@ -343,8 +347,8 @@ class LasCrucesMixin(CityScrapersSpider, metaclass=LasCrucesMixinMeta):
             or "NMSU Fulton Center" in location
         ):
             return {
-                "address": "700 N. Main St., Las Cruces, NM 88001",
                 "name": location,
+                "address": "700 N. Main St., Las Cruces, NM 88001",
             }
 
-        return {"address": "", "name": location}
+        return {"name": location, "address": ""}
