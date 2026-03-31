@@ -60,9 +60,6 @@ class LasCrucesSunlandParkCityMixin(
         month_nodes = section.css("ul.sub-menu > li.menu-item-has-children")
         for month_node in month_nodes:
 
-            month = month_node.css("a::text").get()
-            print(f"month: {month}")
-
             meeting_nodes = month_node.css("ul.sub-menu > li")
             for meeting_node in meeting_nodes:
                 meeting = self._parse_meeting(meeting_node, response)
@@ -88,8 +85,6 @@ class LasCrucesSunlandParkCityMixin(
         title_text = " ".join(
             part.strip() for part in title.css("::text").getall() if part.strip()
         ).strip()
-        print(f"title_text: {title_text}")
-
         href = title.attrib.get("href")
         if not title_text or not href:
             return None

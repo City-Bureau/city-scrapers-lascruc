@@ -92,7 +92,7 @@ def test_council_classification_city_council():
     assert council_items[1]["classification"] == CITY_COUNCIL
 
 
-def test_council_classification_not_classified():
+def test_council_classification_closed_session():
     assert council_items[0]["classification"] == CITY_COUNCIL
 
 
