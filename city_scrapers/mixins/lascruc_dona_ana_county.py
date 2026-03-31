@@ -47,7 +47,7 @@ class LascrucDonaAnaCountySpiderMixin(
         "ROBOTSTXT_OBEY": False,
     }
 
-    # Default location - consistent across all WYCOKCK meetings
+    # Default location - consistent across all Dona Ana County meetings
     location_name = "Dona Ana County"
     default_address = "845 N Motel Blvd, Las Cruces, NM 88007"
 
@@ -63,8 +63,6 @@ class LascrucDonaAnaCountySpiderMixin(
             yield scrapy.Request(compliance_url, callback=self.parse_compliance)
             return
         else:
-            # yield scrapy.Request(self.compliance_url, callback=self.parse_compliance)
-            # today = datetime.now(timezone.utc)
             today = datetime.now(tz=ZoneInfo(self.timezone))
 
             start_date = date.fromisoformat(self.start_date_str)
@@ -320,10 +318,13 @@ class LascrucDonaAnaCountySpiderMixin(
         return links
 
     def _parse_dt(self, dt_str):
-        """Parse an ISO datetime string into a naive datetime object."""
+        """Parse an ISO datetime string into a naive datetime object.
+
+        CivicClerk API appends 'Z' but times are already local,
+        not true UTC. We strip the timezone rather than converting.
+        """
         if not dt_str:
             return None
-        # Handle ISO format like '2025-11-19T11:30:00Z'
         dt_str = dt_str.replace("Z", "+00:00")
         try:
             dt = datetime.fromisoformat(dt_str)
