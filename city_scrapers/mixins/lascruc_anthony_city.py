@@ -1,5 +1,6 @@
 import re
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import scrapy
 from city_scrapers_core.items import Meeting
@@ -8,7 +9,24 @@ from dateutil.parser import ParserError
 from dateutil.parser import parse as dateparse
 
 
-class LascrucAnthonyCityMixin(CityScrapersSpider):
+class LascrucAnthonyCityMixinMeta(type):
+    """Enforces required attributes on child spider classes."""
+
+    def __init__(cls, name, bases, dct):
+        if name == "LascrucAnthonyCityMixin":
+            super().__init__(name, bases, dct)
+            return
+        if any(getattr(b, "__name__", "") == "LascrucAnthonyCityMixin" for b in bases):
+            required = ["name", "agency", "cat_ids", "classification"]
+            missing = [v for v in required if v not in dct]
+            if missing:
+                raise NotImplementedError(f"{name} must define: {', '.join(missing)}")
+        super().__init__(name, bases, dct)
+
+
+class LascrucAnthonyCityMixin(
+    CityScrapersSpider, metaclass=LascrucAnthonyCityMixinMeta
+):
     """
     Mixin for City of Anthony NM AgendaCenter scrapers.
 
@@ -33,24 +51,22 @@ class LascrucAnthonyCityMixin(CityScrapersSpider):
     api_url = base_url + "/AgendaCenter/UpdateCategoryList"
     calendar_cid = None  # override in subclass to enable secondary calendar
 
-    _LINK_TITLE_MAP = {
-        "html": "Agenda (HTML)",
-        "pdf": "Agenda (PDF)",
-        "packet": "Agenda Packet",
-    }
     # Matches the end time in "6:00 PM - 8:00 PM" from the calendar date div
     _CALENDAR_END_RE = re.compile(r"-\s*(\d{1,2}:\d{2}\s*[AP]M)", re.IGNORECASE)
     time_notes = (
-        "Meeting times are not published on the AgendaCenter. "
-        "Refer to the agenda document for the exact time."
+        "Meeting start time and location is not provided by the source, "
+        "refer to the agenda document for more details."
     )
 
     custom_settings = {
         "ROBOTSTXT_OBEY": False,
     }
 
+    def handle_error(self, failure):
+        self.logger.error("Request failed: %s", failure.request.url)
+
     def start_requests(self):
-        now = datetime.now()
+        now = datetime.now(tz=ZoneInfo(self.timezone))
         for cat_id in self.cat_ids:
             yield self._category_request(
                 cat_id=cat_id,
@@ -70,6 +86,7 @@ class LascrucAnthonyCityMixin(CityScrapersSpider):
                         f"&CID={self.calendar_cid}&view=list"
                     ),
                     callback=self._parse_calendar_month,
+                    errback=self.handle_error,
                 )
 
     def _category_request(self, cat_id, year, callback, meta=None):
@@ -105,6 +122,7 @@ class LascrucAnthonyCityMixin(CityScrapersSpider):
             try:
                 year = int(year_text)
             except ValueError:
+                self.logger.warning("Could not parse year from %r", year_text)
                 continue
             if year == current_year:
                 continue
@@ -115,19 +133,14 @@ class LascrucAnthonyCityMixin(CityScrapersSpider):
     def _parse_rows(self, response):
         """Parse meeting rows from the category list HTML fragment."""
         for row in response.css("tr.catAgendaRow"):
-            meeting = self._parse_row(row)
-            if meeting:
-                yield meeting
+            yield from self._parse_row(row)
 
     def _parse_row(self, row):
-        """Parse a single meeting row into a Meeting item."""
+        """Parse a single meeting row, yielding a Request or a Meeting."""
         start = self._parse_start(row)
-        if not start:
-            return None
-
         title = row.css("p a::text").get("").strip()
-        if not title:
-            return None
+        if not start or not title:
+            return
 
         meeting = Meeting(
             title=title,
@@ -138,12 +151,45 @@ class LascrucAnthonyCityMixin(CityScrapersSpider):
             all_day=False,
             time_notes=self.time_notes,
             location=self.location,
-            links=self._parse_links(row),
+            links=[],
             source=self._parse_source(),
         )
         meeting["status"] = self._get_status(meeting)
         meeting["id"] = self._get_id(meeting)
-        return meeting
+
+        html_href = self._find_html_href(row)
+        if html_href:
+            yield scrapy.Request(
+                url=html_href,
+                callback=self._parse_agenda_html,
+                errback=self.handle_error,
+                meta={"meeting": meeting},
+            )
+        else:
+            agenda_href = self._full_url(row.css("p a::attr(href)").get(""))
+            if agenda_href:
+                meeting["links"] = [{"href": agenda_href, "title": "Agenda"}]
+            yield meeting
+
+    def _find_html_href(self, row):
+        """Return the HTML agenda link href from the dropdown, or None."""
+        for link in row.css("ol[role='menu'] a[href]"):
+            if link.css("::text").get("").strip().lower() == "html":
+                href = link.attrib.get("href", "").strip()
+                return self._full_url(href) if href else None
+        return None
+
+    def _parse_agenda_html(self, response):
+        """Follow the HTML agenda page and collect all linked documents."""
+        meeting = response.meta["meeting"]
+        links = []
+        for a in response.css("a[href]"):
+            href = a.attrib.get("href", "").strip()
+            if not href or href.startswith("#"):
+                continue
+            links.append({"href": response.urljoin(href), "title": "Agenda"})
+        meeting["links"] = links
+        yield meeting
 
     def _parse_start(self, row):
         """Parse start date from the aria-label on the date heading."""
@@ -152,43 +198,8 @@ class LascrucAnthonyCityMixin(CityScrapersSpider):
         try:
             return dateparse(date_str)
         except (ParserError, ValueError):
+            self.logger.warning("Could not parse start date from %r", date_str)
             return None
-
-    def _parse_links(self, row):
-        """Extract and normalize all document links for the meeting."""
-        links = []
-        seen = set()
-
-        for link in row.css("ol[role='menu'] a[href]"):
-            link_text = link.css("::text").get("").strip()
-            href = link.attrib.get("href", "").strip()
-            if not href or not link_text or "previous version" in link_text.lower():
-                continue
-            href = self._full_url(href)
-            if href in seen:
-                continue
-            title = self._LINK_TITLE_MAP.get(link_text.lower(), "Agenda")
-            links.append({"href": href, "title": title})
-            seen.add(href)
-
-        # Fall back to the inline p > a link if dropdown had no entries
-        if not links:
-            agenda_href = self._full_url(row.css("p a::attr(href)").get(""))
-            if agenda_href:
-                links.append({"href": agenda_href, "title": "Agenda"})
-                seen.add(agenda_href)
-
-        minutes_href = self._full_url(row.css("td.minutes a::attr(href)").get(""))
-        if minutes_href and minutes_href not in seen:
-            links.append({"href": minutes_href, "title": "Minutes"})
-            seen.add(minutes_href)
-
-        media_href = self._full_url(row.css("td.media a::attr(href)").get("").strip())
-        if media_href and media_href not in seen:
-            links.append({"href": media_href, "title": "Media"})
-            seen.add(media_href)
-
-        return links
 
     def _parse_source(self):
         """Return the AgendaCenter search URL for this spider's categories."""
@@ -200,7 +211,7 @@ class LascrucAnthonyCityMixin(CityScrapersSpider):
 
     def _parse_calendar_month(self, response):
         """Parse future meetings from one month of the CivicPlus calendar list view."""
-        today = datetime.now().date()
+        today = datetime.now(tz=ZoneInfo(self.timezone)).date()
         for item in response.css("div.calendars div.calendar ol li"):
             meeting = self._parse_calendar_item(item)
             if meeting and meeting["start"].date() > today:
@@ -220,7 +231,7 @@ class LascrucAnthonyCityMixin(CityScrapersSpider):
             start=start,
             end=end,
             all_day=False,
-            time_notes="",
+            time_notes=self.time_notes,
             location=self.location,
             links=[],
             source=f"{self.base_url}/calendar.aspx?CID={self.calendar_cid}",
@@ -235,6 +246,7 @@ class LascrucAnthonyCityMixin(CityScrapersSpider):
         try:
             start = dateparse(iso)
         except (ParserError, ValueError):
+            self.logger.warning("Could not parse calendar start date from %r", iso)
             return None, None
 
         # "April\xa01,\xa02026,\xa06:00 PM\u2009-\u20098:00 PM" — normalize whitespace
@@ -250,7 +262,9 @@ class LascrucAnthonyCityMixin(CityScrapersSpider):
             try:
                 end = dateparse(f"{start.date()} {m.group(1)}")
             except (ParserError, ValueError):
-                pass
+                self.logger.warning(
+                    "Could not parse calendar end time from %r", m.group(1)
+                )
         return start, end
 
     def _full_url(self, href):

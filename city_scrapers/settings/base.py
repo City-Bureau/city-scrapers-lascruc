@@ -11,8 +11,6 @@ import os
 
 BOT_NAME = "city_scrapers"
 
-REQUEST_FINGERPRINTER_IMPLEMENTATION = "2.7"
-
 SPIDER_MODULES = ["city_scrapers.spiders"]
 NEWSPIDER_MODULE = "city_scrapers.spiders"
 

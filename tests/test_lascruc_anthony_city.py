@@ -13,10 +13,11 @@ FIXTURE_DIR = Path(__file__).parent / "files"
 API_URL = "https://www.cityofanthonynm.gov/AgendaCenter/UpdateCategoryList"
 
 
-def _html_response(filename, meta=None):
-    request = Request(url=API_URL, meta=meta or {})
+def _html_response(filename, meta=None, url=None):
+    url = url or API_URL
+    request = Request(url=url, meta=meta or {})
     return HtmlResponse(
-        url=API_URL,
+        url=url,
         body=(FIXTURE_DIR / filename).read_bytes(),
         encoding="utf-8",
         request=request,
@@ -33,7 +34,17 @@ def spider():
 def meetings(spider):
     meta = {"cat_id": 3, "current_year": 2026}
     response = _html_response("lascruc_anthony_city_cat3_2026.html", meta=meta)
-    return [r for r in spider._parse_category_years(response) if not hasattr(r, "url")]
+    results = list(spider._parse_category_years(response))
+
+    resolved = [r for r in results if not hasattr(r, "url")]
+    for r in results:
+        if hasattr(r, "url") and "ViewFile/Agenda" in r.url:
+            agenda_response = _html_response(
+                "lascruc_anthony_city_agenda.html", meta=r.meta, url=r.url
+            )
+            resolved.extend(spider._parse_agenda_html(agenda_response))
+
+    return sorted(resolved, key=lambda m: m["start"], reverse=True)
 
 
 @freeze_time(TEST_DATE)
@@ -41,12 +52,16 @@ def test_year_discovery(spider):
     meta = {"cat_id": 3, "current_year": 2026}
     response = _html_response("lascruc_anthony_city_cat3_2026.html", meta=meta)
     results = list(spider._parse_category_years(response))
-    meetings = [r for r in results if not hasattr(r, "url")]
-    requests = [r for r in results if hasattr(r, "url")]
 
-    assert len(meetings) == 2
-    # 3 additional years discovered: 2025, 2024, 2023
-    assert len(requests) == 3
+    direct_meetings = [r for r in results if not hasattr(r, "url")]
+    year_requests = [
+        r for r in results if hasattr(r, "url") and "ViewFile" not in r.url
+    ]
+    html_requests = [r for r in results if hasattr(r, "url") and "ViewFile" in r.url]
+
+    assert len(direct_meetings) == 1  # row without HTML link yields directly
+    assert len(year_requests) == 3  # 2025, 2024, 2023
+    assert len(html_requests) == 1  # row with HTML link yields a follow-up request
 
 
 @freeze_time(TEST_DATE)
@@ -57,24 +72,9 @@ def test_meeting_fields(meetings):
     assert first["classification"] == BOARD
     assert first["status"] == PASSED
     assert first["location"] == {"name": "", "address": ""}
-
-    link_titles = [link["title"] for link in first["links"]]
-    assert "Agenda (HTML)" in link_titles
-    assert "Agenda (PDF)" in link_titles
-    assert "Agenda Packet" in link_titles
-    assert "Minutes" in link_titles
-    assert "Media" in link_titles
-    assert "Previous Versions" not in link_titles
-
-    pdf_link = next(l for l in first["links"] if l["title"] == "Agenda (PDF)")
-    assert "AgendaCenter/ViewFile/Agenda" in pdf_link["href"]
-
-    minutes_link = next(l for l in first["links"] if l["title"] == "Minutes")
-    assert "AgendaCenter/ViewFile/Minutes" in minutes_link["href"]
-
-    media_link = next(l for l in first["links"] if l["title"] == "Media")
-    assert media_link["href"].startswith("https://teams.microsoft.com")
-
+    assert len(first["links"]) == 1
+    assert first["links"][0]["title"] == "Agenda"
+    assert first["links"][0]["href"].endswith("BOTMeeting.pdf")
     assert first["source"] == (
         "https://www.cityofanthonynm.gov/AgendaCenter/Search/?term=&CIDs=3,"
         "&startDate=&endDate=&dateRange=&dateSelector="
