@@ -99,10 +99,6 @@ def test_links():
             "href": "https://lcpsnm.granicus.com/MediaPlayer.php?view_id=1&clip_id=281",  # noqa
             "title": "Video",
         },
-        {
-            "href": "https://lcpsnm.granicus.com/AgendaViewer.php?view_id=1&clip_id=281",  # noqa
-            "title": "Agenda (Granicus)",
-        },
     ]
 
 

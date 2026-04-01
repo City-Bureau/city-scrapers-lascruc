@@ -15,6 +15,7 @@ TITLE_MAP = {
     "retreat": "board of education",
     "retreat (extended work session)": "board of education",
     "special board meeting": "board of education",
+    "special meeting": "board of education",
     "extended work session": "board of education",
     "finance subcommittee meeting": "finance subcommittee",
     "finance committee": "finance subcommittee",
@@ -68,8 +69,8 @@ class LascrucPublicBoeSpider(CityScrapersSpider):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # date_str (YYYY-MM-DD) -> list of {title, agenda_href, video_href}
-        self.additional_links = {}
+        # date_str (YYYY-MM-DD) -> list of {title, video_href}
+        self.video_links = {}
 
     def start_requests(self):
         """First fetch attachments from the secondary source (plain HTTP), then scrape lcps.net with Playwright."""  # noqa
@@ -80,6 +81,14 @@ class LascrucPublicBoeSpider(CityScrapersSpider):
         )
 
     def _parse_secondary_source(self, response):
+        """
+        Scrapes the secondary URL video links, then kicks off the main
+        Playwright request to lcps.net.
+        The main lcps.net page renders its content via JavaScript, so a real
+        Playwright is used instead of a plain HTTP request.
+        Playwright expands all collapsed accordion sections by clicking their
+        headers before handing the fully rendered HTML back to Scrapy
+        """
         for row in response.css("tr.listingRow"):
             title_raw = row.css("td.listItem[headers^='Name']::text").get("").strip()
             date_text = (
@@ -97,12 +106,6 @@ class LascrucPublicBoeSpider(CityScrapersSpider):
 
             date_key = start.strftime("%Y-%m-%d")
 
-            #  Agenda link
-            agenda_href = ""
-            agenda_a = row.css("td.listItem a[href*='AgendaViewer']")
-            if agenda_a:
-                agenda_href = _build_href(agenda_a.attrib["href"])
-
             # Video link from onclick JS attribute
             video_href = ""
             onclick = row.css("td.listItem[headers^='VideoLink'] a::attr(onclick)").get(
@@ -112,10 +115,9 @@ class LascrucPublicBoeSpider(CityScrapersSpider):
             if m:
                 video_href = _build_href(m.group(1))
 
-            self.additional_links.setdefault(date_key, []).append(
+            self.video_links.setdefault(date_key, []).append(
                 {
                     "norm_title": _normalize_title(title_raw),
-                    "agenda_href": agenda_href,
                     "video_href": video_href,
                 }
             )
@@ -126,6 +128,7 @@ class LascrucPublicBoeSpider(CityScrapersSpider):
             meta={
                 "playwright": True,
                 "playwright_page_methods": [
+                    # Waits for a table to appear
                     PageMethod("wait_for_selector", "table"),
                     # Click on all accordion headers
                     PageMethod(
@@ -159,19 +162,16 @@ class LascrucPublicBoeSpider(CityScrapersSpider):
                 continue
 
             date_text = (
-                cells[0].css("p::text").get()
-                or cells[0].css("p span::text").get(default="")
+                cells[0].css("p::text").get() or cells[0].css("p span::text").get("")
             ).strip()
             time_text = (
-                cells[1].css("p::text").get()
-                or cells[1].css("p span::text").get(default="")
+                cells[1].css("p::text").get() or cells[1].css("p span::text").get("")
             ).strip()
 
             location_text = (
-                cells[2].css("p span::text").get()
-                or cells[2].css("p::text").get(default="")
+                cells[2].css("p span::text").get() or cells[2].css("p::text").get("")
             ).strip()
-            meeting_type = cells[3].css("p::text, p span::text").get(default="").strip()
+            meeting_type = cells[3].css("p::text, p span::text").get("").strip()
 
             if not date_text or not meeting_type:
                 continue
@@ -208,20 +208,12 @@ class LascrucPublicBoeSpider(CityScrapersSpider):
         for delta in range(-1, 2):
             key = (start + timedelta(days=delta)).strftime("%Y-%m-%d")
             match = next(
-                (
-                    v
-                    for v in self.additional_links.get(key, [])
-                    if v["norm_title"] == norm
-                ),
+                (v for v in self.video_links.get(key, []) if v["norm_title"] == norm),
                 None,
             )
             if match:
                 if match["video_href"]:
                     links.append({"href": match["video_href"], "title": "Video"})
-                if match["agenda_href"]:
-                    links.append(
-                        {"href": match["agenda_href"], "title": "Agenda (Granicus)"}
-                    )
                 break
         return links
 
@@ -255,6 +247,7 @@ class LascrucPublicBoeSpider(CityScrapersSpider):
             return dateparse(clean, fuzzy=True)
 
         except (ValueError, OverflowError):
+            self.logger.warning(f"Could not parse date/time from text: {text!r:.200}")
             return None
 
     def _parse_location(self, location_text):
@@ -284,7 +277,7 @@ class LascrucPublicBoeSpider(CityScrapersSpider):
                 break
             for a in cells[idx].css("a"):
                 href = a.attrib.get("href", "").strip()
-                title = a.css("::text").get(default="").strip() or default_title
+                title = a.css("::text").get("").strip() or default_title
                 if href:
                     links.append({"href": href, "title": title})
         return links if links else [{"href": "", "title": ""}]
