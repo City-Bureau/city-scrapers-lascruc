@@ -46,6 +46,7 @@ class LascrucAnthonyCityMixin(
     """
 
     timezone = "America/Denver"
+    tzinfo = ZoneInfo(timezone)
     location = {"name": "", "address": ""}
     base_url = "https://www.cityofanthonynm.gov"
     api_url = base_url + "/AgendaCenter/UpdateCategoryList"
@@ -53,10 +54,29 @@ class LascrucAnthonyCityMixin(
 
     # Matches the end time in "6:00 PM - 8:00 PM" from the calendar date div
     _CALENDAR_END_RE = re.compile(r"-\s*(\d{1,2}:\d{2}\s*[AP]M)", re.IGNORECASE)
+    # Normalizes title variants from both sources to a clean display name
+    _TITLE_NORMALIZE = [
+        (re.compile(r"budget\s+workshop", re.IGNORECASE), "Budget Workshop"),
+        (
+            re.compile(r"special\s+meeting|special\s+virtual", re.IGNORECASE),
+            "Special Meeting",
+        ),
+        (re.compile(r"public\s+hearing", re.IGNORECASE), "Public Hearing"),
+        (
+            re.compile(
+                r"regular\s+meeting|regular\s+bot|bot\s+regular|p&z\s+regular"
+                r"|board\s+of\s+trustee|planning\s+&\s+zoning|regular\s+p&z"
+                r"|\bmeeting\b",
+                re.IGNORECASE,
+            ),
+            "Regular Meeting",
+        ),
+    ]
     time_notes = (
         "Meeting start time and location is not provided by the source, "
         "refer to the agenda document for more details."
     )
+    time_notes_calendar = "Location is not provided by the source."
 
     custom_settings = {
         "ROBOTSTXT_OBEY": False,
@@ -66,7 +86,7 @@ class LascrucAnthonyCityMixin(
         self.logger.error("Request failed: %s", failure.request.url)
 
     def start_requests(self):
-        now = datetime.now(tz=ZoneInfo(self.timezone))
+        now = datetime.now(tz=self.tzinfo)
         for cat_id in self.cat_ids:
             yield self._category_request(
                 cat_id=cat_id,
@@ -106,6 +126,7 @@ class LascrucAnthonyCityMixin(
                 "Referer": self.base_url + "/AgendaCenter",
             },
             callback=callback,
+            errback=self.handle_error,
             meta=meta or {},
             dont_filter=True,
         )
@@ -119,11 +140,9 @@ class LascrucAnthonyCityMixin(
 
         for year_link in response.css("ul.years a"):
             year_text = year_link.css("::text").get("").strip()
-            try:
-                year = int(year_text)
-            except ValueError:
-                self.logger.warning("Could not parse year from %r", year_text)
+            if not year_text.isdigit():
                 continue
+            year = int(year_text)
             if year == current_year:
                 continue
             yield self._category_request(
@@ -138,12 +157,18 @@ class LascrucAnthonyCityMixin(
     def _parse_row(self, row):
         """Parse a single meeting row, yielding a Request or a Meeting."""
         start = self._parse_start(row)
-        title = row.css("p a::text").get("").strip()
-        if not start or not title:
+        raw_title = row.css("p a::text").get("").strip()
+        if not start or not raw_title:
             return
 
+        # Include the AgendaCenter row ID (e.g. "02052024-66") in the title
+        # used for ID generation so that two rows with identical titles on the
+        # same date (the site publishes multiple agenda versions) get unique IDs.
+        row_id = row.css("p a::attr(id)").get("").strip()
+        id_title = f"{raw_title} {row_id}" if row_id else raw_title
+
         meeting = Meeting(
-            title=title,
+            title=id_title,
             description="",
             classification=self.classification,
             start=start,
@@ -154,8 +179,12 @@ class LascrucAnthonyCityMixin(
             links=[],
             source=self._parse_source(),
         )
-        meeting["status"] = self._get_status(meeting)
         meeting["id"] = self._get_id(meeting)
+        meeting["title"] = self._normalize_title(raw_title)
+        meeting["status"] = self._get_status(meeting, text=raw_title)
+
+        minutes_href = self._full_url(row.css("td.minutes a::attr(href)").get(""))
+        minutes = [{"href": minutes_href, "title": "Minutes"}] if minutes_href else []
 
         html_href = self._find_html_href(row)
         if html_href:
@@ -163,13 +192,22 @@ class LascrucAnthonyCityMixin(
                 url=html_href,
                 callback=self._parse_agenda_html,
                 errback=self.handle_error,
-                meta={"meeting": meeting},
+                meta={"meeting": meeting, "minutes": minutes},
             )
         else:
             agenda_href = self._full_url(row.css("p a::attr(href)").get(""))
+            links = []
             if agenda_href:
-                meeting["links"] = [{"href": agenda_href, "title": "Agenda"}]
+                links.append({"href": agenda_href, "title": "Agenda"})
+            meeting["links"] = links + minutes
             yield meeting
+
+    def _normalize_title(self, raw_title):
+        """Map raw AgendaCenter title variants to a clean display name."""
+        for pattern, clean in self._TITLE_NORMALIZE:
+            if pattern.search(raw_title):
+                return clean
+        return raw_title.rstrip(".")
 
     def _find_html_href(self, row):
         """Return the HTML agenda link href from the dropdown, or None."""
@@ -182,13 +220,19 @@ class LascrucAnthonyCityMixin(
     def _parse_agenda_html(self, response):
         """Follow the HTML agenda page and collect all linked documents."""
         meeting = response.meta["meeting"]
+        minutes = response.meta.get("minutes", [])
         links = []
         for a in response.css("a[href]"):
             href = a.attrib.get("href", "").strip()
             if not href or href.startswith("#"):
                 continue
-            links.append({"href": response.urljoin(href), "title": "Agenda"})
-        meeting["links"] = links
+            links.append(
+                {
+                    "href": response.urljoin(href),
+                    "title": f"Attachment {len(links) + 1}",
+                }
+            )
+        meeting["links"] = links + minutes
         yield meeting
 
     def _parse_start(self, row):
@@ -211,7 +255,7 @@ class LascrucAnthonyCityMixin(
 
     def _parse_calendar_month(self, response):
         """Parse future meetings from one month of the CivicPlus calendar list view."""
-        today = datetime.now(tz=ZoneInfo(self.timezone)).date()
+        today = datetime.now(tz=self.tzinfo).date()
         for item in response.css("div.calendars div.calendar ol li"):
             meeting = self._parse_calendar_item(item)
             if meeting and meeting["start"].date() > today:
@@ -219,25 +263,26 @@ class LascrucAnthonyCityMixin(
 
     def _parse_calendar_item(self, item):
         """Parse a single calendar list item into a Meeting."""
-        title = item.css("h3 a span::text").get("").strip()
+        raw_title = item.css("h3 a span::text").get("").strip()
         start, end = self._parse_calendar_datetime(item)
-        if not title or not start:
+        if not raw_title or not start:
             return None
 
         meeting = Meeting(
-            title=title,
+            title=raw_title,
             description="",
             classification=self.classification,
             start=start,
             end=end,
             all_day=False,
-            time_notes=self.time_notes,
+            time_notes=self.time_notes_calendar,
             location=self.location,
             links=[],
             source=f"{self.base_url}/calendar.aspx?CID={self.calendar_cid}",
         )
-        meeting["status"] = self._get_status(meeting)
         meeting["id"] = self._get_id(meeting)
+        meeting["title"] = self._normalize_title(raw_title)
+        meeting["status"] = self._get_status(meeting, text=raw_title)
         return meeting
 
     def _parse_calendar_datetime(self, item):
