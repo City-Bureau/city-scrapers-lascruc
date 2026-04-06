@@ -35,6 +35,7 @@ class LascrucPublicBoeSpider(CityScrapersSpider):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # date_str (YYYY-MM-DD) -> list of {title, video_href}
+        self.seen_meetings = set()
         self.video_links = {}
 
     # Title normalization — maps known variations
@@ -237,6 +238,12 @@ class LascrucPublicBoeSpider(CityScrapersSpider):
 
             meeting["status"] = self._get_status(meeting, status_text)
             meeting["id"] = self._get_id(meeting)
+
+            seen_meeting = str(meeting["start"]) + " " + meeting["title"]
+
+            if seen_meeting in self.seen_meetings:
+                continue
+            self.seen_meetings.add(seen_meeting)
 
             yield meeting
 
