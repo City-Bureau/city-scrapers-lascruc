@@ -34,30 +34,30 @@ def spider():
 
 
 @pytest.fixture()
-@freeze_time(TEST_DATE)
 def meetings(spider):
-    meta = {"cat_id": 3, "current_year": 2026}
-    response = _html_response("lascruc_anthony_city_cat3_2026.html", meta=meta)
-    results = list(spider._parse_category_years(response))
+    with freeze_time(TEST_DATE):
+        meta = {"cat_id": 3, "current_year": 2026}
+        response = _html_response("lascruc_anthony_city_cat3_2026.html", meta=meta)
+        results = list(spider._parse_category_years(response))
 
-    resolved = [r for r in results if not hasattr(r, "url")]
-    for r in results:
-        if hasattr(r, "url") and "ViewFile/Agenda" in r.url:
-            agenda_response = _html_response(
-                "lascruc_anthony_city_agenda.html", meta=r.meta, url=r.url
-            )
-            resolved.extend(spider._parse_agenda_html(agenda_response))
+        resolved = [r for r in results if not hasattr(r, "url")]
+        for r in results:
+            if hasattr(r, "url") and "ViewFile/Agenda" in r.url:
+                agenda_response = _html_response(
+                    "lascruc_anthony_city_agenda.html", meta=r.meta, url=r.url
+                )
+                resolved.extend(spider._parse_agenda_html(agenda_response))
 
-    return sorted(resolved, key=lambda m: m["start"], reverse=True)
+        return sorted(resolved, key=lambda m: m["start"], reverse=True)
 
 
 @pytest.fixture()
-@freeze_time(TEST_DATE)
 def calendar_meetings(spider):
-    response = _html_response(
-        "lascruc_anthony_city_calendar_month.html", url=CALENDAR_URL
-    )
-    return list(spider._parse_calendar_month(response))
+    with freeze_time(TEST_DATE):
+        response = _html_response(
+            "lascruc_anthony_city_calendar_month.html", url=CALENDAR_URL
+        )
+        return list(spider._parse_calendar_month(response))
 
 
 @freeze_time(TEST_DATE)
@@ -72,12 +72,11 @@ def test_year_discovery(spider):
     ]
     html_requests = [r for r in results if hasattr(r, "url") and "ViewFile" in r.url]
 
-    assert len(direct_meetings) == 1  # row without HTML link yields directly
-    assert len(year_requests) == 3  # 2025, 2024, 2023
-    assert len(html_requests) == 1  # row with HTML link yields a follow-up request
+    assert len(direct_meetings) == 1
+    assert len(year_requests) == 3
+    assert len(html_requests) == 1
 
 
-@freeze_time(TEST_DATE)
 def test_meeting_fields(meetings):
     first = meetings[0]
     assert first["title"] == "Regular Meeting"
@@ -98,7 +97,6 @@ def test_meeting_fields(meetings):
     )
 
 
-@freeze_time(TEST_DATE)
 def test_meeting_without_minutes(meetings):
     second = meetings[1]
     assert second["title"] == "Notice of Potential Quorum"
@@ -110,19 +108,15 @@ def test_meeting_without_minutes(meetings):
     )
 
 
-@freeze_time(TEST_DATE)
 def test_meeting_ids_are_unique(meetings):
     ids = [m["id"] for m in meetings]
     assert len(ids) == len(set(ids))
 
 
-@freeze_time(TEST_DATE)
 def test_calendar_filters_past_meetings(calendar_meetings):
-    # March 4 (past) filtered out; April 15 (future) kept
     assert len(calendar_meetings) == 1
 
 
-@freeze_time(TEST_DATE)
 def test_calendar_meeting_fields(calendar_meetings):
     m = calendar_meetings[0]
     assert m["title"] == "Regular Meeting"
