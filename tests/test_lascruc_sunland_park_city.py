@@ -120,9 +120,16 @@ def test_council_links_without_video():
 
 def test_council_location():
     assert council_items[0]["location"] == {
-        "name": "City Council Chambers",
-        "address": "1000 McNutt Rd. Suite A, Sunland Park, NM 88063",
+        "name": "",
+        "address": "",
     }
+
+
+def test_council_time_notes():
+    assert (
+        council_items[0]["time_notes"]
+        == "Please refer to the agenda for meeting location details"
+    )  # noqa
 
 
 def test_council_source():
@@ -194,9 +201,16 @@ def test_pz_links_without_video():
 
 def test_pz_location():
     assert pz_items[0]["location"] == {
-        "name": "City Council Chambers",
-        "address": "1000 McNutt Rd. Suite A, Sunland Park, NM 88063",
+        "name": "",
+        "address": "",
     }
+
+
+def test_pz_time_notes():
+    assert (
+        pz_items[0]["time_notes"]
+        == "Please refer to the agenda for meeting location details"
+    )  # noqa
 
 
 @pytest.mark.parametrize("item", pz_items)

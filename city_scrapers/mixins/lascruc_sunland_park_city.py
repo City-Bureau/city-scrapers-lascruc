@@ -108,8 +108,8 @@ class LasCrucesSunlandParkCityMixin(
             start=start,
             end=None,
             all_day=False,
-            time_notes="",
-            location=self._parse_location(response),
+            time_notes="Please refer to the agenda for meeting location details",
+            location={"name": "", "address": ""},
             links=self._dedupe_links(links),
             source=self.source_url,
         )
@@ -151,6 +151,12 @@ class LasCrucesSunlandParkCityMixin(
                     except ValueError:
                         continue
 
+                self.logger.warning(
+                    "Failed to parse date from '%s' in '%s'",
+                    combined_str,
+                    title_text,
+                )
+
         return None
 
     def _parse_title(self, title_text):
@@ -187,13 +193,6 @@ class LasCrucesSunlandParkCityMixin(
             return COMMISSION
         else:
             return NOT_CLASSIFIED
-
-    def _parse_location(self, response):
-        """Parse meeting location"""
-        return {
-            "name": "City Council Chambers",
-            "address": "1000 McNutt Rd. Suite A, Sunland Park, NM 88063",
-        }
 
     def _dedupe_links(self, links):
         seen = set()
