@@ -104,7 +104,7 @@ class LasCrucesSunlandParkCityMixin(
         meeting = Meeting(
             title=self._parse_title(title_text),
             description="",
-            classification=self._parse_classification(title_text),
+            classification=self._parse_classification(),
             start=start,
             end=None,
             all_day=False,
@@ -149,13 +149,11 @@ class LasCrucesSunlandParkCityMixin(
                     try:
                         return datetime.strptime(combined_str, fmt)
                     except ValueError:
-                        continue
-
-                self.logger.warning(
-                    "Failed to parse date from '%s' in '%s'",
-                    combined_str,
-                    title_text,
-                )
+                        self.logger.warning(
+                            "Failed to parse date from '%s' in '%s'",
+                            combined_str,
+                            title_text,
+                        )
 
         return None
 
@@ -184,7 +182,7 @@ class LasCrucesSunlandParkCityMixin(
 
         return title if title else title_text
 
-    def _parse_classification(self, title_text):
+    def _parse_classification(self):
         label = getattr(self, "meeting_type_label", "").lower()
 
         if "city council" in label:
