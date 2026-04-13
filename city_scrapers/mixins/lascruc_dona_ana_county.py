@@ -53,7 +53,7 @@ class LascrucDonaAnaCountySpiderMixin(
 
     # Date range configuration (can be overridden by subclasses)
     # First meeting in CivicClerk API: 2015-05-04
-    start_date_str = "2020-01-01"
+    start_date_str = "2019-01-01"
     months_ahead = 12
 
     def start_requests(self):
