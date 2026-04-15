@@ -5,7 +5,6 @@ source.
 Required class variables on child spiders:
     name (str): Spider name/slug
     agency (str): Full agency name
-    id (str): Unique identifier for the spider
 """
 
 import json
@@ -38,7 +37,7 @@ class LasCrucesMixinMeta(type):
             return
 
         if any(getattr(base, "__name__", "") == "LasCrucesMixin" for base in bases):
-            required_static_vars = ["agency", "name", "id"]
+            required_static_vars = ["agency", "name"]
             missing_vars = [var for var in required_static_vars if var not in dct]
 
             if missing_vars:
