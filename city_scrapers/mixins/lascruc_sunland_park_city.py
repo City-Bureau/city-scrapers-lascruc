@@ -26,7 +26,7 @@ class LasCrucesSunlandParkCityMixinMeta(type):
             getattr(base, "__name__", "") == "LasCrucesSunlandParkCityMixin"
             for base in bases
         ):
-            required_static_vars = ["agency", "name", "id", "meeting_type_label"]
+            required_static_vars = ["agency", "name", "meeting_type_label"]
             missing_vars = [var for var in required_static_vars if var not in dct]
 
             if missing_vars:
@@ -149,11 +149,13 @@ class LasCrucesSunlandParkCityMixin(
                     try:
                         return datetime.strptime(combined_str, fmt)
                     except ValueError:
-                        self.logger.warning(
-                            "Failed to parse date from '%s' in '%s'",
-                            combined_str,
-                            title_text,
-                        )
+                        continue
+
+                self.logger.warning(
+                    "Failed to parse date from '%s' in '%s'",
+                    combined_str,
+                    title_text,
+                )
 
         return None
 

@@ -5,14 +5,12 @@ spider_configs = [
         "class_name": "LascrucSunlandParkCityCouncilSpider",
         "name": "lascruc_sunland_park_city_council",
         "agency": "Sunland Park City Council",
-        "id": "lascruc_sunland_park_city_council",
         "meeting_type_label": "City Council Meetings",
     },
     {
         "class_name": "LascrucSunlandParkPlanningAndZoningSpider",
         "name": "lascruc_sunland_park_planning_and_zoning",
         "agency": "Sunland Park Planning and Zoning Commission",
-        "id": "lascruc_sunland_park_planning_and_zoning",
         "meeting_type_label": "Planning & Zoning Meetings",
     },
 ]
