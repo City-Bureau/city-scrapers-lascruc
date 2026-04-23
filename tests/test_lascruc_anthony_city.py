@@ -80,10 +80,13 @@ def test_year_discovery(spider):
 def test_meeting_fields(meetings):
     first = meetings[0]
     assert first["title"] == "Regular Meeting"
-    assert first["start"] == datetime(2026, 3, 4, 0, 0)
+    assert first["start"] == datetime(2026, 3, 4, 18, 0)
     assert first["classification"] == BOARD
     assert first["status"] == PASSED
-    assert first["location"] == {"name": "", "address": ""}
+    assert first["location"] == {
+        "name": "Court Chambers",
+        "address": "820 Highway 478 Anthony, NM 88021",
+    }
     assert len(first["links"]) == 2
     assert first["links"][0]["title"] == "Attachment 1"
     assert first["links"][0]["href"].endswith("BOTMeeting.pdf")
@@ -100,11 +103,18 @@ def test_meeting_fields(meetings):
 def test_meeting_without_minutes(meetings):
     second = meetings[1]
     assert second["title"] == "Notice of Potential Quorum"
-    assert second["start"] == datetime(2026, 2, 18, 0, 0)
+    assert second["start"] == datetime(2026, 2, 18, 18, 0)
     assert len(second["links"]) == 1
     assert second["links"][0]["title"] == "Agenda"
     assert second["links"][0]["href"] == (
         "https://www.cityofanthonynm.gov/AgendaCenter/ViewFile/Agenda/_02182026-168"
+    )
+
+
+def test_title_normalize_ph_abbreviation(spider):
+    assert (
+        spider._normalize_title("Board of Trustees PH Meeting Agenda")
+        == "Public Hearing"
     )
 
 
@@ -124,7 +134,10 @@ def test_calendar_meeting_fields(calendar_meetings):
     assert m["end"] == datetime(2026, 4, 15, 20, 0)
     assert m["classification"] == BOARD
     assert m["status"] == TENTATIVE
-    assert m["time_notes"] == "Location is not provided by the source."
+    assert m["time_notes"] == ""
     assert m["source"] == "https://www.cityofanthonynm.gov/calendar.aspx?CID=23"
     assert m["links"] == []
-    assert m["location"] == {"name": "", "address": ""}
+    assert m["location"] == {
+        "name": "Court Chambers",
+        "address": "820 Highway 478 Anthony, NM 88021",
+    }

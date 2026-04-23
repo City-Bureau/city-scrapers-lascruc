@@ -13,6 +13,8 @@ AgendaCenter category IDs:
     3   Board of Trustees
 """
 
+from datetime import time as dt_time
+
 from city_scrapers_core.constants import BOARD, COMMISSION
 
 from city_scrapers.mixins.lascruc_anthony_city import LascrucAnthonyCityMixin
@@ -25,6 +27,11 @@ spider_configs = [
         "cat_ids": [3],
         "classification": BOARD,
         "calendar_cid": 23,
+        "start_time": dt_time(18, 0),
+        "location": {
+            "name": "Court Chambers",
+            "address": "820 Highway 478 Anthony, NM 88021",
+        },
     },
     {
         "class_name": "LascrucAnthonyCityPzSpider",
@@ -33,6 +40,11 @@ spider_configs = [
         "cat_ids": [2],
         "classification": COMMISSION,
         "calendar_cid": 27,
+        "start_time": dt_time(18, 30),
+        "location": {
+            "name": "Council Chambers",
+            "address": "820 Highway 478 Anthony, NM 88021",
+        },
     },
 ]
 
