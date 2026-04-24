@@ -43,11 +43,17 @@ class LascrucAnthonyCityMixin(
             of calendar pages and yields any meeting whose date is strictly
             after today (so AgendaCenter always owns "today" and past dates,
             and the calendar supplies future-only entries without overlap).
+        start_time: datetime.time applied to all past meetings from
+            AgendaCenter, which does not publish a start time.  Defaults to
+            None (midnight).
+        location: dict with "name" and "address" keys used for all meetings.
+            Defaults to {"name": "", "address": ""}.
     """
 
     timezone = "America/Denver"
     tzinfo = ZoneInfo(timezone)
     location = {"name": "", "address": ""}
+    start_time = None  # override in subclass to hardcode start time for past meetings
     base_url = "https://www.cityofanthonynm.gov"
     api_url = base_url + "/AgendaCenter/UpdateCategoryList"
     calendar_cid = None  # override in subclass to enable secondary calendar
@@ -61,7 +67,7 @@ class LascrucAnthonyCityMixin(
             re.compile(r"special\s+meeting|special\s+virtual", re.IGNORECASE),
             "Special Meeting",
         ),
-        (re.compile(r"public\s+hearing", re.IGNORECASE), "Public Hearing"),
+        (re.compile(r"public\s+hearing|\bPH\b", re.IGNORECASE), "Public Hearing"),
         (
             re.compile(
                 r"regular\s+meeting|regular\s+bot|bot\s+regular|p&z\s+regular"
@@ -73,10 +79,10 @@ class LascrucAnthonyCityMixin(
         ),
     ]
     time_notes = (
-        "Meeting start time and location is not provided by the source, "
-        "refer to the agenda document for more details."
+        "Start time is estimated based on prior meetings; "
+        "refer to the agenda document for exact details."
     )
-    time_notes_calendar = "Location is not provided by the source."
+    time_notes_calendar = ""
 
     custom_settings = {
         "ROBOTSTXT_OBEY": False,
@@ -240,7 +246,15 @@ class LascrucAnthonyCityMixin(
         aria_label = row.css("h3 strong::attr(aria-label)").get("")
         date_str = aria_label.replace("Agenda for ", "").strip()
         try:
-            return dateparse(date_str)
+            dt = dateparse(date_str)
+            if self.start_time is not None:
+                dt = dt.replace(
+                    hour=self.start_time.hour,
+                    minute=self.start_time.minute,
+                    second=0,
+                    microsecond=0,
+                )
+            return dt
         except (ParserError, ValueError):
             self.logger.warning("Could not parse start date from %r", date_str)
             return None
