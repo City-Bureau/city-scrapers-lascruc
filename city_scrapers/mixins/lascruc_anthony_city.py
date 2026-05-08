@@ -217,8 +217,10 @@ class LascrucAnthonyCityMixin(
 
     def _find_html_href(self, row):
         """Return the HTML agenda link href from the dropdown, or None."""
-        for link in row.css("ol[role='menu'] a[href]"):
-            if link.css("::text").get("").strip().lower() == "html":
+        menu_items = row.css("ol li a[href]")
+        for link in menu_items:
+            link_text = link.css("::text").get("").strip().lower()
+            if link_text == "html":
                 href = link.attrib.get("href", "").strip()
                 return self._full_url(href) if href else None
         return None
