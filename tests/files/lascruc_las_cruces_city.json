@@ -1,0 +1,122 @@
+[
+  {
+    "ExternalCalendar": false,
+    "Id": 11014,
+    "MeetingDate": "2026-10-26",
+    "MeetingDateTime": "2026-10-26 17:00",
+    "MeetingLocation": "City Council Chambers, City Hall",
+    "MeetingTime": "05:00 PM",
+    "Name": "Agenda Setting Meeting - Oct 26 2026",
+    "Published": false,
+    "TypeId": 24,
+    "VideoIcon": ""
+  },
+  {
+    "ExternalCalendar": false,
+    "Id": 10738,
+    "MeetingDate": "2024-06-27",
+    "MeetingDateTime": "2024-06-27 09:00",
+    "MeetingLocation": "City Clerk Conference Rm 1202",
+    "MeetingTime": "09:00 AM",
+    "Name": "ASCMV Closed Meeting- Jun 27 2024",
+    "Published": true,
+    "TypeId": 27,
+    "VideoIcon": ""
+  },
+  {
+    "ExternalCalendar": false,
+    "Id": 11025,
+    "MeetingDate": "2026-01-22",
+    "MeetingDateTime": "2026-01-22 14:00",
+    "MeetingLocation": "Utilities ",
+    "MeetingTime": "02:00 PM",
+    "Name": "Work Session - CIAC - Jan 22 2026",
+    "Published": true,
+    "TypeId": 40,
+    "VideoIcon": ""
+  },
+  {
+    "ExternalCalendar": false,
+    "Id": 10853,
+    "MeetingDate": "2025-01-13",
+    "MeetingDateTime": "2025-01-13 09:00",
+    "MeetingLocation": "City Council Chambers, City Hall",
+    "MeetingTime": "09:00 AM",
+    "Name": "Special City Council Meeting - Jan 13 2025",
+    "Published": true,
+    "TypeId": 20,
+    "VideoIcon": "<em class='video-event glyphicon glyphicon-facetime-video' data-id'10853' style='position: absolute; right: 0px; top: 9px; margin: 0 0 0 0.4em; text-indent: 0em;'></em>"
+  },
+  {
+    "ExternalCalendar": false,
+    "Id": 11053,
+    "MeetingDate": "2026-04-20",
+    "MeetingDateTime": "2026-04-20 10:00",
+    "MeetingLocation": "City Hall, Conference Room 3608",
+    "MeetingTime": "10:00 AM",
+    "Name": "Closed Meeting - Apr 20 2026",
+    "Published": false,
+    "TypeId": 23,
+    "VideoIcon": ""
+  },
+  {
+    "ExternalCalendar": false,
+    "Id": 10784,
+    "MeetingDate": "2024-10-22",
+    "MeetingDateTime": "2024-10-22 18:00",
+    "MeetingLocation": "City Council Chambers, City Hall",
+    "MeetingTime": "06:00 PM",
+    "Name": "Planning & Zoning - Oct 22 2024",
+    "Published": false,
+    "TypeId": 26,
+    "VideoIcon": ""
+  },
+  {
+    "ExternalCalendar": false,
+    "Id": 10777,
+    "MeetingDate": "2024-08-30",
+    "MeetingDateTime": "2024-08-30 09:00",
+    "MeetingLocation": "City Council Chambers, City Hall",
+    "MeetingTime": "09:00 AM",
+    "Name": "Press Conferences & Forums - Aug 30 2024",
+    "Published": true,
+    "TypeId": 25,
+    "VideoIcon": ""
+  },
+  {
+    "ExternalCalendar": false,
+    "Id": 10669,
+    "MeetingDate": "2024-08-26",
+    "MeetingDateTime": "2024-08-26 13:00",
+    "MeetingLocation": "City Council Chambers, City Hall",
+    "MeetingTime": "01:00 PM",
+    "Name": "Work Session - Aug 26 2024",
+    "Published": true,
+    "TypeId": 43,
+    "VideoIcon": ""
+  },
+  {
+    "ExternalCalendar": false,
+    "Id": 11023,
+    "MeetingDate": "2026-10-26",
+    "MeetingDateTime": "2026-10-26 13:00",
+    "MeetingLocation": "City Council Chambers, City Hall",
+    "MeetingTime": "01:00 PM",
+    "Name": "Tax Increment Development District Board Meeting - Oct 26 2026",
+    "Published": false,
+    "TypeId": 21,
+    "VideoIcon": ""
+  },
+  {
+    "ExternalCalendar": false,
+    "Id": 11052,
+    "MeetingDate": "2026-04-09",
+    "MeetingDateTime": "2026-04-09 15:00",
+    "MeetingLocation": "680 N. Motel Blvd.",
+    "MeetingTime": "03:00 PM",
+    "Name": "Utilities - Regular Meeting - Apr 09 2026",
+    "Published": false,
+    "TypeId": 38,
+    "VideoIcon": ""
+  }
+]
